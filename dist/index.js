@@ -1305,7 +1305,7 @@ var fuseOptions = {
     { name: "name", weight: 0.3 },
     { name: "url", weight: 0.7 }
   ],
-  threshold: 0.2,
+  threshold: 0.8,
   distance: 100,
   includeScore: true
 };
@@ -1430,7 +1430,15 @@ async function loadAllData() {
       loadHistory(),
       loadCurrentTabs()
     ]);
-    allSites = [...sites, ...bookmarks, ...history, ...tabs];
+    const tabUrls = new Set(tabs.map((tab) => tab.url));
+    const filteredHistory = history.filter((item) => !tabUrls.has(item.url));
+    const filteredBookmarks = bookmarks.filter((item) => !tabUrls.has(item.url));
+    allSites = [
+      ...sites,
+      ...tabs,
+      ...filteredBookmarks,
+      ...filteredHistory
+    ];
     isDataLoaded = true;
     fuse = new Fuse(allSites, fuseOptions);
     if (pendingSearch) {
@@ -1446,7 +1454,13 @@ async function loadAllData() {
 }
 renderLinks(sites);
 loadAllData();
+var isKeyRepeating = false;
+var keyRepeatTimeout;
 searchInput.addEventListener("keydown", (e) => {
+  if (e.repeat && (e.key === "n" || e.key === "p" || e.key === "ArrowUp" || e.key === "ArrowDown")) {
+    e.preventDefault();
+    return;
+  }
   switch (e.key) {
     case "Enter":
       e.preventDefault();
@@ -1458,28 +1472,56 @@ searchInput.addEventListener("keydown", (e) => {
     case "n":
       if (e.ctrlKey && e.key === "n") {
         e.preventDefault();
-        selectedIndex = Math.min(selectedIndex + 1, filteredSites.length - 1);
-        updateSelection();
-        updatePreview();
+        if (!isKeyRepeating) {
+          isKeyRepeating = true;
+          selectedIndex = Math.min(selectedIndex + 1, filteredSites.length - 1);
+          updateSelection();
+          updatePreview();
+          clearTimeout(keyRepeatTimeout);
+          keyRepeatTimeout = setTimeout(() => {
+            isKeyRepeating = false;
+          }, 100);
+        }
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
-        selectedIndex = Math.min(selectedIndex + 1, filteredSites.length - 1);
-        updateSelection();
-        updatePreview();
+        if (!isKeyRepeating) {
+          isKeyRepeating = true;
+          selectedIndex = Math.min(selectedIndex + 1, filteredSites.length - 1);
+          updateSelection();
+          updatePreview();
+          clearTimeout(keyRepeatTimeout);
+          keyRepeatTimeout = setTimeout(() => {
+            isKeyRepeating = false;
+          }, 100);
+        }
       }
       break;
     case "ArrowUp":
     case "p":
       if (e.ctrlKey && e.key === "p") {
         e.preventDefault();
-        selectedIndex = Math.max(selectedIndex - 1, 0);
-        updateSelection();
-        updatePreview();
+        if (!isKeyRepeating) {
+          isKeyRepeating = true;
+          selectedIndex = Math.max(selectedIndex - 1, 0);
+          updateSelection();
+          updatePreview();
+          clearTimeout(keyRepeatTimeout);
+          keyRepeatTimeout = setTimeout(() => {
+            isKeyRepeating = false;
+          }, 100);
+        }
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        selectedIndex = Math.max(selectedIndex - 1, 0);
-        updateSelection();
-        updatePreview();
+        if (!isKeyRepeating) {
+          isKeyRepeating = true;
+          selectedIndex = Math.max(selectedIndex - 1, 0);
+          updateSelection();
+          updatePreview();
+          clearTimeout(keyRepeatTimeout);
+          keyRepeatTimeout = setTimeout(() => {
+            isKeyRepeating = false;
+          }, 100);
+        }
       }
       break;
   }
@@ -1509,12 +1551,22 @@ function updatePreview() {
   let statusInfo = "";
   if (selectedSite.isCurrentTab) {
     statusInfo = '<span class="status-current">\uD83D\uDCCD Current Tab</span>';
-  } else if (existingTab || selectedSite.type === "tab") {
+  } else if (selectedSite.type === "tab") {
+    statusInfo = '<span class="status-open">\uD83D\uDCD1 Open Tab</span>';
+  } else if (existingTab) {
     statusInfo = '<span class="status-open">\uD83D\uDCD1 Already Open</span>';
+  }
+  let faviconUrl = selectedSite.favicon;
+  if (!faviconUrl) {
+    try {
+      faviconUrl = `https://www.google.com/s2/favicons?domain=${new URL(selectedSite.url).hostname}`;
+    } catch (error) {
+      faviconUrl = "https://www.google.com/favicon.ico";
+    }
   }
   previewContainer.innerHTML = `
         <div class="preview-header">
-            <img src="${selectedSite.favicon || `https://www.google.com/s2/favicons?domain=${new URL(selectedSite.url).hostname}`}" 
+            <img src="${faviconUrl}" 
                  alt="" class="preview-favicon" width="16" height="16">
             <span class="preview-title">${selectedSite.name}</span>
             <span class="type-badge ${selectedSite.type}">${selectedSite.type}</span>
@@ -1526,17 +1578,27 @@ function updatePreview() {
 function fuzzySearchWithFuse(query, sites2) {
   if (!query)
     return sites2;
-  const prioritizedSites = sites2.sort((a, b) => {
-    const priorityOrder = { bookmark: 0, preset: 1, tab: 2, history: 3 };
-    return priorityOrder[a.type] - priorityOrder[b.type];
-  });
   if (!fuse) {
-    fuse = new Fuse(prioritizedSites, fuseOptions);
+    fuse = new Fuse(sites2, fuseOptions);
   } else {
-    fuse.setCollection(prioritizedSites);
+    fuse.setCollection(sites2);
   }
   const results = fuse.search(query);
-  return results.map((result) => result.item);
+  const sortedResults = results.sort((a, b) => {
+    const priorityOrder = {
+      tab: 1,
+      history: 2,
+      bookmark: 3,
+      preset: 4
+    };
+    const aPriority = priorityOrder[a.item.type] || 999;
+    const bPriority = priorityOrder[b.item.type] || 999;
+    if (aPriority === bPriority) {
+      return a.score - b.score;
+    }
+    return aPriority - bPriority;
+  });
+  return sortedResults.map((result) => result.item);
 }
 function createWebSearchItem(query) {
   const encodedQuery = encodeURIComponent(query);
@@ -1560,14 +1622,18 @@ function createLinkElement(site, index) {
     className += " current-tab";
   }
   const existingTab = site.type !== "tab" ? findExistingTab(site.url) : null;
-  if (existingTab) {
+  if (existingTab && site.type !== "tab") {
     className += " existing-tab";
   }
   linkElement.className = className;
   linkElement.dataset.index = index.toString();
   const iconElement = document.createElement("img");
   iconElement.className = "favicon";
-  iconElement.src = site.favicon || `https://www.google.com/s2/favicons?domain=${new URL(site.url).hostname}`;
+  try {
+    iconElement.src = site.favicon || `https://www.google.com/s2/favicons?domain=${new URL(site.url).hostname}`;
+  } catch (error) {
+    iconElement.src = "https://www.google.com/favicon.ico";
+  }
   iconElement.alt = "";
   iconElement.width = 16;
   iconElement.height = 16;
@@ -1578,10 +1644,10 @@ function createLinkElement(site, index) {
   let displayName = site.name;
   if (site.isCurrentTab) {
     displayName = `\uD83D\uDCCD ${site.name} (Current)`;
-  } else if (existingTab) {
-    displayName = `\uD83D\uDCD1 ${site.name} (Open)`;
   } else if (site.type === "tab") {
     displayName = `\uD83D\uDCD1 ${site.name}`;
+  } else if (existingTab) {
+    displayName = `\uD83D\uDCD1 ${site.name} (Open)`;
   }
   textElement.textContent = displayName;
   const urlElement = document.createElement("span");
@@ -1610,6 +1676,14 @@ function findExistingTab(url) {
 }
 async function navigateToSite(site) {
   try {
+    if (site.type === "tab" && site.tabId) {
+      await chrome.tabs.update(site.tabId, { active: true });
+      const tab = await chrome.tabs.get(site.tabId);
+      if (tab.windowId) {
+        await chrome.windows.update(tab.windowId, { focused: true });
+      }
+      return;
+    }
     const existingTab = findExistingTab(site.url);
     if (existingTab && existingTab.tabId) {
       await chrome.tabs.update(existingTab.tabId, { active: true });

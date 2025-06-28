@@ -28,7 +28,7 @@ const fuseOptions = {
         { name: "name", weight: 0.3 },
         { name: "url", weight: 0.7 },
     ],
-    threshold: 0.2, // より寛容にマッチング
+    threshold: 0.8, // より寛容にマッチング
     distance: 100,
     includeScore: true,
 };
@@ -220,7 +220,24 @@ async function loadAllData() {
             loadCurrentTabs(),
         ]);
 
-        allSites = [...sites, ...bookmarks, ...history, ...tabs];
+        // タブのURLセットを作成（重複除去用）
+        const tabUrls = new Set(tabs.map((tab) => tab.url));
+
+        // 履歴とブックマークからタブで既に開かれているURLを除外
+        const filteredHistory = history.filter(
+            (item) => !tabUrls.has(item.url)
+        );
+        const filteredBookmarks = bookmarks.filter(
+            (item) => !tabUrls.has(item.url)
+        );
+
+        // タブを優先してallSitesに追加
+        allSites = [
+            ...sites,
+            ...tabs,
+            ...filteredBookmarks,
+            ...filteredHistory,
+        ];
         isDataLoaded = true;
 
         // Fuse.jsインスタンスを初期化
@@ -249,8 +266,24 @@ loadAllData();
 
 // === 以下のコードブロックを追加 ===
 
+// キーリピート防止のための変数
+let isKeyRepeating = false;
+let keyRepeatTimeout: number;
+
 // 検索ボックスでキーが押されたときのイベントリスナー
 searchInput.addEventListener("keydown", (e: KeyboardEvent) => {
+    // キーリピートの場合はナビゲーション操作を無視
+    if (
+        e.repeat &&
+        (e.key === "n" ||
+            e.key === "p" ||
+            e.key === "ArrowUp" ||
+            e.key === "ArrowDown")
+    ) {
+        e.preventDefault();
+        return;
+    }
+
     switch (e.key) {
         case "Enter":
             e.preventDefault();
@@ -263,20 +296,37 @@ searchInput.addEventListener("keydown", (e: KeyboardEvent) => {
         case "n":
             if (e.ctrlKey && e.key === "n") {
                 e.preventDefault();
-                selectedIndex = Math.min(
-                    selectedIndex + 1,
-                    filteredSites.length - 1
-                );
-                updateSelection();
-                updatePreview();
+                if (!isKeyRepeating) {
+                    isKeyRepeating = true;
+                    selectedIndex = Math.min(
+                        selectedIndex + 1,
+                        filteredSites.length - 1
+                    );
+                    updateSelection();
+                    updatePreview();
+
+                    // キーリピート防止のタイマー
+                    clearTimeout(keyRepeatTimeout);
+                    keyRepeatTimeout = setTimeout(() => {
+                        isKeyRepeating = false;
+                    }, 100) as unknown as number;
+                }
             } else if (e.key === "ArrowDown") {
                 e.preventDefault();
-                selectedIndex = Math.min(
-                    selectedIndex + 1,
-                    filteredSites.length - 1
-                );
-                updateSelection();
-                updatePreview();
+                if (!isKeyRepeating) {
+                    isKeyRepeating = true;
+                    selectedIndex = Math.min(
+                        selectedIndex + 1,
+                        filteredSites.length - 1
+                    );
+                    updateSelection();
+                    updatePreview();
+
+                    clearTimeout(keyRepeatTimeout);
+                    keyRepeatTimeout = setTimeout(() => {
+                        isKeyRepeating = false;
+                    }, 100) as unknown as number;
+                }
             }
             break;
 
@@ -284,14 +334,30 @@ searchInput.addEventListener("keydown", (e: KeyboardEvent) => {
         case "p":
             if (e.ctrlKey && e.key === "p") {
                 e.preventDefault();
-                selectedIndex = Math.max(selectedIndex - 1, 0);
-                updateSelection();
-                updatePreview();
+                if (!isKeyRepeating) {
+                    isKeyRepeating = true;
+                    selectedIndex = Math.max(selectedIndex - 1, 0);
+                    updateSelection();
+                    updatePreview();
+
+                    clearTimeout(keyRepeatTimeout);
+                    keyRepeatTimeout = setTimeout(() => {
+                        isKeyRepeating = false;
+                    }, 100) as unknown as number;
+                }
             } else if (e.key === "ArrowUp") {
                 e.preventDefault();
-                selectedIndex = Math.max(selectedIndex - 1, 0);
-                updateSelection();
-                updatePreview();
+                if (!isKeyRepeating) {
+                    isKeyRepeating = true;
+                    selectedIndex = Math.max(selectedIndex - 1, 0);
+                    updateSelection();
+                    updatePreview();
+
+                    clearTimeout(keyRepeatTimeout);
+                    keyRepeatTimeout = setTimeout(() => {
+                        isKeyRepeating = false;
+                    }, 100) as unknown as number;
+                }
             }
             break;
     }
@@ -333,18 +399,27 @@ function updatePreview() {
     let statusInfo = "";
     if (selectedSite.isCurrentTab) {
         statusInfo = '<span class="status-current">📍 Current Tab</span>';
-    } else if (existingTab || selectedSite.type === "tab") {
+    } else if (selectedSite.type === "tab") {
+        statusInfo = '<span class="status-open">📑 Open Tab</span>';
+    } else if (existingTab) {
         statusInfo = '<span class="status-open">📑 Already Open</span>';
+    }
+
+    // ファビコンURLの生成（エラーハンドリング付き）
+    let faviconUrl = selectedSite.favicon;
+    if (!faviconUrl) {
+        try {
+            faviconUrl = `https://www.google.com/s2/favicons?domain=${
+                new URL(selectedSite.url).hostname
+            }`;
+        } catch (error) {
+            faviconUrl = "https://www.google.com/favicon.ico";
+        }
     }
 
     previewContainer.innerHTML = `
         <div class="preview-header">
-            <img src="${
-                selectedSite.favicon ||
-                `https://www.google.com/s2/favicons?domain=${
-                    new URL(selectedSite.url).hostname
-                }`
-            }" 
+            <img src="${faviconUrl}" 
                  alt="" class="preview-favicon" width="16" height="16">
             <span class="preview-title">${selectedSite.name}</span>
             <span class="type-badge ${selectedSite.type}">${
@@ -362,20 +437,35 @@ function updatePreview() {
 function fuzzySearchWithFuse(query: string, sites: SiteItem[]): SiteItem[] {
     if (!query) return sites;
 
-    // ブックマークに優先度を付けてソート
-    const prioritizedSites = sites.sort((a, b) => {
-        const priorityOrder = { bookmark: 0, preset: 1, tab: 2, history: 3 };
-        return priorityOrder[a.type] - priorityOrder[b.type];
-    });
-
     if (!fuse) {
-        fuse = new Fuse(prioritizedSites, fuseOptions);
+        fuse = new Fuse(sites, fuseOptions);
     } else {
-        fuse.setCollection(prioritizedSites);
+        fuse.setCollection(sites);
     }
 
     const results = fuse.search(query);
-    return results.map((result: any) => result.item);
+
+    // Fuse.jsの結果を優先度とスコアの組み合わせでソート
+    const sortedResults = results.sort((a: any, b: any) => {
+        const priorityOrder: Record<string, number> = {
+            tab: 1,
+            history: 2,
+            bookmark: 3,
+            preset: 4,
+        };
+        const aPriority = priorityOrder[a.item.type] || 999;
+        const bPriority = priorityOrder[b.item.type] || 999;
+
+        // 優先度が同じ場合はFuse.jsのスコアでソート（スコアが低いほど良い）
+        if (aPriority === bPriority) {
+            return a.score - b.score;
+        }
+
+        // 優先度が異なる場合は優先度でソート
+        return aPriority - bPriority;
+    });
+
+    return sortedResults.map((result: any) => result.item);
 }
 
 /**
@@ -411,9 +501,9 @@ function createLinkElement(site: SiteItem, index: number): HTMLAnchorElement {
         className += " current-tab";
     }
 
-    // 既に開いているタブかチェック
+    // 既に開いているタブかチェック（ただし、site自体がタブの場合は除く）
     const existingTab = site.type !== "tab" ? findExistingTab(site.url) : null;
-    if (existingTab) {
+    if (existingTab && site.type !== "tab") {
         className += " existing-tab";
     }
 
@@ -423,11 +513,19 @@ function createLinkElement(site: SiteItem, index: number): HTMLAnchorElement {
     // ファビコン要素
     const iconElement = document.createElement("img");
     iconElement.className = "favicon";
-    iconElement.src =
-        site.favicon ||
-        `https://www.google.com/s2/favicons?domain=${
-            new URL(site.url).hostname
-        }`;
+
+    // ファビコンのURL設定（エラーハンドリング付き）
+    try {
+        iconElement.src =
+            site.favicon ||
+            `https://www.google.com/s2/favicons?domain=${
+                new URL(site.url).hostname
+            }`;
+    } catch (error) {
+        // URLが無効な場合はデフォルトのファビコンを使用
+        iconElement.src = "https://www.google.com/favicon.ico";
+    }
+
     iconElement.alt = "";
     iconElement.width = 16;
     iconElement.height = 16;
@@ -443,10 +541,10 @@ function createLinkElement(site: SiteItem, index: number): HTMLAnchorElement {
     let displayName = site.name;
     if (site.isCurrentTab) {
         displayName = `📍 ${site.name} (Current)`;
-    } else if (existingTab) {
-        displayName = `📑 ${site.name} (Open)`;
     } else if (site.type === "tab") {
         displayName = `📑 ${site.name}`;
+    } else if (existingTab) {
+        displayName = `📑 ${site.name} (Open)`;
     }
 
     textElement.textContent = displayName;
@@ -496,7 +594,19 @@ function findExistingTab(url: string): SiteItem | null {
  */
 async function navigateToSite(site: SiteItem) {
     try {
-        // 既に開いているタブかチェック
+        // タブアイテムの場合は、そのタブIDを直接使用
+        if (site.type === "tab" && site.tabId) {
+            // 指定されたタブに移動
+            await chrome.tabs.update(site.tabId, { active: true });
+            // タブのウィンドウにもフォーカス
+            const tab = await chrome.tabs.get(site.tabId);
+            if (tab.windowId) {
+                await chrome.windows.update(tab.windowId, { focused: true });
+            }
+            return;
+        }
+
+        // タブ以外のアイテムの場合は、既に開いているタブかチェック
         const existingTab = findExistingTab(site.url);
 
         if (existingTab && existingTab.tabId) {
@@ -527,10 +637,14 @@ function getInitialDisplay(): SiteItem[] {
     }
 
     // タブ、プリセット、ブックマーク、履歴の順で優先表示
-    const tabs = allSites.filter(site => site.type === "tab");
-    const presets = allSites.filter(site => site.type === "preset");
-    const bookmarks = allSites.filter(site => site.type === "bookmark").slice(0, 10);
-    const history = allSites.filter(site => site.type === "history").slice(0, 5);
+    const tabs = allSites.filter((site) => site.type === "tab");
+    const presets = allSites.filter((site) => site.type === "preset");
+    const bookmarks = allSites
+        .filter((site) => site.type === "bookmark")
+        .slice(0, 10);
+    const history = allSites
+        .filter((site) => site.type === "history")
+        .slice(0, 5);
 
     const combined = [...tabs, ...presets, ...bookmarks, ...history];
     return combined.slice(0, 30);
