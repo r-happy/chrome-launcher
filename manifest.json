@@ -1,0 +1,22 @@
+{
+    "manifest_version": 3,
+    "name": "simple launcher",
+    "version": "1.0.0",
+    "description": "A simple website launcher",
+    "icons": {},
+    "action": {
+        "default_icon": {},
+        "default_title": "Open Launcher",
+        "default_popup": "popup.html"
+    },
+    "permissions": ["tabs", "bookmarks", "history", "activeTab"],
+    "host_permissions": ["<all_urls>"],
+    "commands": {
+        "_execute_action": {
+            "suggested_key": {
+                "default": "Ctrl+Space"
+            },
+            "description": "拡張機能のポップアップを開く"
+        }
+    }
+}

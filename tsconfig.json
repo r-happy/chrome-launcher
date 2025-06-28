@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    /* Type Checking */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Modules */
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    
+    /* Libraries */
+    "lib": ["ESNext", "DOM"], // ⇦ ここに "DOM" を追加
+
+    /* Emit */
+    "noEmit": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}

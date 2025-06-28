@@ -1,0 +1,21 @@
+{
+  "name": "chrome-launcher",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/chrome": "^0.0.328"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "clean": "rm -rf ./dist",
+    "copy-static": "cp manifest.json popup.html popup.css ./dist/",
+    "build": "bun run clean && mkdir ./dist && bun build ./index.ts --outdir ./dist --target browser && bun run copy-static"
+  },
+  "dependencies": {
+    "fuse.js": "^7.1.0"
+  }
+}
