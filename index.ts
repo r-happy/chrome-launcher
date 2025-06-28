@@ -445,27 +445,8 @@ function fuzzySearchWithFuse(query: string, sites: SiteItem[]): SiteItem[] {
 
     const results = fuse.search(query);
 
-    // Fuse.jsの結果を優先度とスコアの組み合わせでソート
-    const sortedResults = results.sort((a: any, b: any) => {
-        const priorityOrder: Record<string, number> = {
-            tab: 1,
-            history: 2,
-            bookmark: 3,
-            preset: 4,
-        };
-        const aPriority = priorityOrder[a.item.type] || 999;
-        const bPriority = priorityOrder[b.item.type] || 999;
-
-        // 優先度が同じ場合はFuse.jsのスコアでソート（スコアが低いほど良い）
-        if (aPriority === bPriority) {
-            return a.score - b.score;
-        }
-
-        // 優先度が異なる場合は優先度でソート
-        return aPriority - bPriority;
-    });
-
-    return sortedResults.map((result: any) => result.item);
+    // Fuse.jsのスコアのみでソート（スコアが低いほど良い）
+    return results.map((result: any) => result.item);
 }
 
 /**

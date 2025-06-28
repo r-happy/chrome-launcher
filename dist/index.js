@@ -1584,21 +1584,7 @@ function fuzzySearchWithFuse(query, sites2) {
     fuse.setCollection(sites2);
   }
   const results = fuse.search(query);
-  const sortedResults = results.sort((a, b) => {
-    const priorityOrder = {
-      tab: 1,
-      history: 2,
-      bookmark: 3,
-      preset: 4
-    };
-    const aPriority = priorityOrder[a.item.type] || 999;
-    const bPriority = priorityOrder[b.item.type] || 999;
-    if (aPriority === bPriority) {
-      return a.score - b.score;
-    }
-    return aPriority - bPriority;
-  });
-  return sortedResults.map((result) => result.item);
+  return results.map((result) => result.item);
 }
 function createWebSearchItem(query) {
   const encodedQuery = encodeURIComponent(query);
