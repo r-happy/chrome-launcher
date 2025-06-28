@@ -163,7 +163,7 @@ async function loadHistory() {
     try {
         const historyItems = await chrome.history.search({
             text: "",
-            maxResults: 20,
+            maxResults: 100,
             startTime: Date.now() - 7 * 24 * 60 * 60 * 1000, // 過去7日間
         });
 
