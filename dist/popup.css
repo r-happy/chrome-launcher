@@ -1,0 +1,326 @@
+html {
+  border-radius: 50px;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  background-color: #f3f4f6;
+}
+
+* {
+  margin: 0px;
+  padding: 0px;
+  box-sizing: border-box;
+}
+
+body {
+  width: 500px;
+  height: 600px;
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+#launcher-container {
+  padding: 10px;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+h1 {
+  font-size: 16px;
+  margin: 0 0 10px 0;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+#links {
+  flex: 1;
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc transparent;
+  scroll-behavior: smooth;
+}
+
+#links::-webkit-scrollbar {
+  width: 6px;
+}
+
+#links::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#links::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 3px;
+}
+
+#links a {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  text-decoration: none;
+  color: #333;
+  border-radius: 4px;
+  margin-bottom: 5px;
+  background-color: #f0f0f0;
+  transition: background-color 0.2s;
+  gap: 8px;
+}
+
+#links a:hover {
+  background-color: #e0e0e0;
+}
+
+.favicon {
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+
+.link-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-bottom: 5px;
+  background-color: #f0f0f0;
+  transition: background-color 0.2s;
+  gap: 8px;
+  will-change: background-color;
+}
+
+.link-item.selected {
+  background-color: #007acc !important;
+  color: white;
+  will-change: transform;
+}
+
+.link-item.selected .type-badge {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+}
+
+.link-item.selected .site-url {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.type-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background-color: #007acc;
+  color: white;
+  flex-shrink: 0;
+}
+
+.link-item.preset .type-badge {
+  background-color: #28a745;
+}
+
+.link-item.bookmark .type-badge {
+  background-color: #ffc107;
+  color: #333;
+}
+
+.link-item.history .type-badge {
+  background-color: #6c757d;
+}
+
+.link-item.tab .type-badge {
+  background-color: #007bff;
+}
+
+/* Web検索アイテムのスタイル */
+.link-item.web-search {
+  background-color: #e8f4fd;
+  border: 1px dashed #007acc;
+}
+
+.link-item.web-search:hover {
+  background-color: #d1ecf1;
+}
+
+.link-item.web-search.selected {
+  background-color: #007acc !important;
+  border-color: #005a8a;
+}
+
+.link-item.web-search .type-badge {
+  background-color: #17a2b8;
+}
+
+/* コンテンツコンテナのスタイル */
+.content-container {
+  flex-grow: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.site-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.site-url {
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* プレビューエリアのスタイル */
+#preview {
+  margin-bottom: 10px;
+  padding: 8px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+  min-height: 50px;
+  max-height: 80px;
+  flex-shrink: 0;
+  display: none;
+}
+
+#preview:not(:empty) {
+  display: block;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.preview-favicon {
+  flex-shrink: 0;
+}
+
+.preview-title {
+  font-weight: 500;
+  flex-grow: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-url {
+  font-size: 11px;
+  color: #666;
+  word-break: break-all;
+  line-height: 1.3;
+}
+
+.preview-status {
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.status-current {
+  color: #f39c12;
+  font-weight: 600;
+}
+
+.status-open {
+  color: #17a2b8;
+  font-weight: 600;
+}
+
+/* search-input */
+#search-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 14px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+/* 現在のタブと既存タブのスタイル */
+.link-item.current-tab {
+  background-color: #fff3cd;
+  border-left: 4px solid #ffc107;
+}
+
+.link-item.current-tab:hover {
+  background-color: #ffeaa7;
+}
+
+.link-item.current-tab.selected {
+  background-color: #f39c12 !important;
+  color: white;
+}
+
+.link-item.existing-tab {
+  background-color: #d1ecf1;
+  border-left: 4px solid #17a2b8;
+}
+
+.link-item.existing-tab:hover {
+  background-color: #bee5eb;
+}
+
+.link-item.existing-tab.selected {
+  background-color: #17a2b8 !important;
+  color: white;
+}
+
+.link-item.current-tab .type-badge,
+.link-item.existing-tab .type-badge {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: #333;
+}
+
+.link-item.current-tab.selected .type-badge,
+.link-item.existing-tab.selected .type-badge {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+}
+
+/* タブアイコンの調整 */
+.link-item.current-tab .site-name,
+.link-item.existing-tab .site-name {
+  font-weight: 600;
+}
+
+/* タブアイテムの追加スタイル */
+.link-item.tab {
+  position: relative;
+}
+
+.link-item.tab::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: #17a2b8;
+  border-radius: 0 2px 2px 0;
+}
+
+.link-item.current-tab::before {
+  background-color: #f39c12;
+}
+
+/* タブセクションの見出し（オプション） */
+.section-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  padding: 8px 12px 4px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  margin-bottom: 5px;
+}
