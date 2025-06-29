@@ -21,6 +21,7 @@ let selectedIndex = 0;
 let fuse: any = null;
 let isDataLoaded = false;
 let pendingSearch = "";
+let isHistoryEnabled = true; // 履歴表示の有効/無効フラグ
 
 // Fuse.jsの設定
 const fuseOptions = {
@@ -40,6 +41,9 @@ let documentFragment: DocumentFragment;
 const linksContainer = document.getElementById("links");
 const searchInput = document.getElementById("search-input") as HTMLInputElement;
 const previewContainer = document.getElementById("preview") as HTMLElement;
+const historyToggleButton = document.getElementById(
+    "history-toggle"
+) as HTMLButtonElement;
 
 /**
  * 渡されたサイトのリストに基づいてリンクを描画する関数
@@ -236,7 +240,7 @@ async function loadAllData() {
             ...sites,
             ...tabs,
             ...filteredBookmarks,
-            ...filteredHistory,
+            ...(isHistoryEnabled ? filteredHistory : []), // 履歴フラグに基づいて条件付きで追加
         ];
         isDataLoaded = true;
 
@@ -263,6 +267,9 @@ renderLinks(sites);
 
 // 非同期でデータをロード
 loadAllData();
+
+// 初期ボタン状態を設定
+updateHistoryButtonState();
 
 // === 以下のコードブロックを追加 ===
 
@@ -358,6 +365,13 @@ searchInput.addEventListener("keydown", (e: KeyboardEvent) => {
                         isKeyRepeating = false;
                     }, 100) as unknown as number;
                 }
+            }
+            break;
+
+        case "h":
+            if (e.ctrlKey) {
+                e.preventDefault();
+                toggleHistoryDisplay();
             }
             break;
     }
@@ -551,11 +565,6 @@ function createLinkElement(site: SiteItem, index: number): HTMLAnchorElement {
         navigateToSite(site);
     });
 
-    linkElement.addEventListener("mouseenter", () => {
-        selectedIndex = index;
-        updateSelection();
-    });
-
     return linkElement;
 }
 
@@ -623,10 +632,47 @@ function getInitialDisplay(): SiteItem[] {
     const bookmarks = allSites
         .filter((site) => site.type === "bookmark")
         .slice(0, 10);
-    const history = allSites
-        .filter((site) => site.type === "history")
-        .slice(0, 5);
+    const history = isHistoryEnabled
+        ? allSites.filter((site) => site.type === "history").slice(0, 5)
+        : []; // 履歴が無効の場合は空配列
 
     const combined = [...tabs, ...presets, ...bookmarks, ...history];
     return combined.slice(0, 30);
 }
+
+/**
+ * 履歴表示の有効/無効を切り替える関数
+ */
+function toggleHistoryDisplay() {
+    isHistoryEnabled = !isHistoryEnabled;
+
+    // データを再ロードして表示を更新
+    if (isDataLoaded) {
+        loadAllData();
+    }
+
+    // ボタンの状態を更新
+    updateHistoryButtonState();
+}
+
+// ボタンのクリックイベントリスナーを追加
+historyToggleButton.addEventListener("click", (e: MouseEvent) => {
+    e.preventDefault();
+    toggleHistoryDisplay();
+});
+
+// 初期ボタン状態を設定
+function updateHistoryButtonState() {
+    if (isHistoryEnabled) {
+        historyToggleButton.classList.remove("inactive");
+        historyToggleButton.classList.add("active");
+        historyToggleButton.title = "履歴表示: ON (クリックでOFF)";
+    } else {
+        historyToggleButton.classList.remove("active");
+        historyToggleButton.classList.add("inactive");
+        historyToggleButton.title = "履歴表示: OFF (クリックでON)";
+    }
+}
+
+// 初期ボタン状態を更新
+updateHistoryButtonState();

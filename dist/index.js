@@ -1300,6 +1300,7 @@ var selectedIndex = 0;
 var fuse = null;
 var isDataLoaded = false;
 var pendingSearch = "";
+var isHistoryEnabled = true;
 var fuseOptions = {
   keys: [
     { name: "name", weight: 0.3 },
@@ -1313,6 +1314,7 @@ var documentFragment;
 var linksContainer = document.getElementById("links");
 var searchInput = document.getElementById("search-input");
 var previewContainer = document.getElementById("preview");
+var historyToggleButton = document.getElementById("history-toggle");
 function renderLinks(sitesToRender) {
   filteredSites = sitesToRender;
   selectedIndex = 0;
@@ -1437,7 +1439,7 @@ async function loadAllData() {
       ...sites,
       ...tabs,
       ...filteredBookmarks,
-      ...filteredHistory
+      ...isHistoryEnabled ? filteredHistory : []
     ];
     isDataLoaded = true;
     fuse = new Fuse(allSites, fuseOptions);
@@ -1454,6 +1456,7 @@ async function loadAllData() {
 }
 renderLinks(sites);
 loadAllData();
+updateHistoryButtonState();
 var isKeyRepeating = false;
 var keyRepeatTimeout;
 searchInput.addEventListener("keydown", (e) => {
@@ -1522,6 +1525,12 @@ searchInput.addEventListener("keydown", (e) => {
             isKeyRepeating = false;
           }, 100);
         }
+      }
+      break;
+    case "h":
+      if (e.ctrlKey) {
+        e.preventDefault();
+        toggleHistoryDisplay();
       }
       break;
   }
@@ -1651,10 +1660,6 @@ function createLinkElement(site, index) {
     e.preventDefault();
     navigateToSite(site);
   });
-  linkElement.addEventListener("mouseenter", () => {
-    selectedIndex = index;
-    updateSelection();
-  });
   return linkElement;
 }
 function findExistingTab(url) {
@@ -1692,7 +1697,30 @@ function getInitialDisplay() {
   const tabs = allSites.filter((site) => site.type === "tab");
   const presets = allSites.filter((site) => site.type === "preset");
   const bookmarks = allSites.filter((site) => site.type === "bookmark").slice(0, 10);
-  const history = allSites.filter((site) => site.type === "history").slice(0, 5);
+  const history = isHistoryEnabled ? allSites.filter((site) => site.type === "history").slice(0, 5) : [];
   const combined = [...tabs, ...presets, ...bookmarks, ...history];
   return combined.slice(0, 30);
 }
+function toggleHistoryDisplay() {
+  isHistoryEnabled = !isHistoryEnabled;
+  if (isDataLoaded) {
+    loadAllData();
+  }
+  updateHistoryButtonState();
+}
+historyToggleButton.addEventListener("click", (e) => {
+  e.preventDefault();
+  toggleHistoryDisplay();
+});
+function updateHistoryButtonState() {
+  if (isHistoryEnabled) {
+    historyToggleButton.classList.remove("inactive");
+    historyToggleButton.classList.add("active");
+    historyToggleButton.title = "履歴表示: ON (クリックでOFF)";
+  } else {
+    historyToggleButton.classList.remove("active");
+    historyToggleButton.classList.add("inactive");
+    historyToggleButton.title = "履歴表示: OFF (クリックでON)";
+  }
+}
+updateHistoryButtonState();

@@ -10,7 +10,12 @@
 <body>
 
   <div id="launcher-container">
-    <input type="text" id="search-input" placeholder="Search links..." autofocus>
+    <div class="header-controls">
+      <input type="text" id="search-input" placeholder="Search links..." autofocus>
+      <button id="history-toggle" class="history-toggle" title="Toggle History (Ctrl+H)">
+        <span class="toggle-icon">📚</span>
+      </button>
+    </div>
     <div id="preview"></div>
     <div id="links"></div>
   </div>
